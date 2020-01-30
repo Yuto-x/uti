@@ -1,0 +1,85 @@
+/*
+         * 3Dに切り替えた後3D画面の1階・2階ボタンは常時表示し、
+         * 処理は2Dモードの1階・2階ボタンを切り替える処理を書く
+         */
+        // 3D切り替えボタンを押したとき
+        if (Cam3D.activeself == false)
+        {
+            CamHantei = true;
+            // 1階モードのとき
+            if (1F.activeself == true)
+            {
+                // 2階で作った非表示のオブジェクトを表示する
+                foreach (GameObject HidSecondObj in SecondRoomList)
+                {
+                    HidSecondObj.SetActive(true);
+                }
+            }
+            // 2階モードの時
+            else if (2F.activeself == true)
+            {
+                // 2階の地面の削除
+                foreach (GameObject GrandDel in SecondGrandDelTag)
+                {
+                    Destroy(GrandDel);
+                }
+
+                // 一度非表示にした壁の高い場所を表示
+                foreach (GameObject WallTopActive in WallTopList)
+                {
+                    WallTopActive.SetActive(true);
+                }
+            }
+        }
+        // 3Dモードから2Dモードに戻ったとき
+        else if (Cam3D.activeself == true)
+        {
+            // 一度3Dモードに切り替えないと入らない
+            if (CamHantei == true)
+            {
+                CamHantei = false; // 処理に入り続けないようにするためfalseに
+
+                // 1階モードのとき
+                if (1F.activeself == true)
+                {
+                    // 2階で作ったオブジェクトを非表示にする
+                    foreach (GameObject HidSecondObj in SecondRoomList)
+                    {
+                        HidSecondObj.SetActive(false);
+                    }
+                }
+                // 2階モードの時
+                else if (2F.activeself == true)
+                {
+                    //各インデックスに代入された値をもとに2階の地面を生成する
+                    for (int i = 0; i < field.GetLength(0); i++)
+                    {
+                        for (int j = 0; j < field.GetLength(2); j++)
+                        {
+                            //インデックスの値が1の時、cubeを生成
+                            if (field[i, 4, j] == 1)
+                            {
+                                GameObject wall = Instantiate(secondgrand);
+                                // wallの名前の変更 countによって一つ一つに番号をふる
+                                wall.name = "secondgrand" + count;
+                                wall.transform.position = new Vector3(i, 4, j);
+                                count++;
+                            }//インデックスの値が2の時、cubeを生成
+                            else if (field[i, 4, j] == 2)
+                            {
+                                GameObject wall = Instantiate(blackcube);
+                                //wallの名前の変更 countによって一つ一つに番号をふる
+                                wall.name = "blackcube" + blackcubecount;
+                                wall.transform.position = new Vector3(i, 4, j);
+                                blackcubecount++;
+                            }
+                        }
+                    }
+                    // 一度非表示にした壁の高い場所を表示
+                    foreach (GameObject WallTopActive in WallTopList)
+                    {
+                        WallTopActive.SetActive(false);
+                    }
+                }
+            }
+        }
