@@ -1,4 +1,3 @@
-﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -6,21 +5,9 @@ using UnityEngine.EventSystems;
 
 
 /**
- *森君へ！！！！！！！！！！！！！
  * 変数名わかりやすく変えてくれるのはありがたいですが、
  * その変数が何の変数かコメントを残しておいてください
  * 次に作業するときにわかりません
- * 
- * ぶん殴るぞ
- * 
- * やってみろ
- * 
- * 今から一緒に
- * 
- * これから一緒に
- * 
- * 殴りに行こうか！！！
- * yeah
  */
 public class maincontrol : MonoBehaviour
 {
@@ -33,6 +20,9 @@ public class maincontrol : MonoBehaviour
     public GameObject masuwall; //壁
     public GameObject secondgrand;  //2階のマス
     public GameObject blackcube;  //既存の壁
+    public GameObject kara; // 空のオブジェクト
+    public GameObject kaidanin; //階段
+    public GameObject door; //ドア
 
     //ボタン
     GameObject Room1FButton;    //1階モード
@@ -40,10 +30,13 @@ public class maincontrol : MonoBehaviour
     GameObject RoomCreateButton;    //部屋作成モード
     GameObject RoomDeleteButton;  //部屋削除モード
     GameObject toile2;          //トイレ検索モード
+    GameObject stepup;          //階段下から上モード
+    GameObject doorButton;          //ドアモード
 
     private RaycastHit hit;
-    
+
     //変数定義
+    string wallObjName = "";
     string startObjectName = "";
     string endObjectName = "";
     string delObjectName = "";
@@ -51,10 +44,13 @@ public class maincontrol : MonoBehaviour
     string kit2 = "";   //キッチンの変数(タグ判定のため)
     string bus2 = "";   //お風呂の変数(タグ判定のため)
 
-    //3次元の配列を置く
-    int[,,] field = new int[70, 10, 40];
-    int count = 0;
+    GameObject ClickObj; // クリックしたしたオブジェクト
+    GameObject firstObj; // 最初にクリックした壁を保持
 
+    //3次元の配列を置く
+    public GameObject[,,] field = new GameObject[70, 10, 40];
+    int count = 0;
+    
 
     //クリック用の変数
     Vector3 tmp = new Vector3(0, 0, 0);
@@ -86,21 +82,26 @@ public class maincontrol : MonoBehaviour
     public GameObject FirstFloorButton; // 2階に切り替えるボタン
     public GameObject SecondFloorButton; // 1階に切り替えるボタン
     bool CamJudg = false;
-    public GameObject SecondGrands;
-    List<Transform> SecondGrandList = new List<Transform>();
-    Transform[] SecondGrandArray;
+    [SerializeField] GameObject SecondGrands;
+    bool Floor1Judg = false;
+    bool Floor2Judg = false;
 
+    // 親
+    public GameObject grands;
 
+    //ドア実行用変数
+    int doorsu = 0;
+
+    bool han = true;
 
     // Start is called before the first frame update
     void Start()
     {
-        SecondGrandArray = SecondGrandList.ToArray();
         /*
          * 地面生成の処理(森)
          * -----------------------------------------------------------------
          */
-        // 1と0を代入
+        //各インデックスをもとに地面を生成する
         // 初期化
         for (int i = 0; i < field.GetLength(0); i++)
         {
@@ -110,35 +111,20 @@ public class maincontrol : MonoBehaviour
                 {
                     if (j == 0)
                     {
-                        field[i, j, k] = 1;
+                        GameObject Grand = Instantiate(grand);
+                        // wallの名前の変更 countによって一つ一つに番号をふる
+                        Grand.name = "grand" + count;
+                        Grand.transform.position = new Vector3(i, j, k);
+                        field[i, j, k] = Grand;
+                        Grand.transform.parent = grands.transform;
+                        count++;
                     }
                     else
                     {
-                        field[i, j, k] = 0;
+                        field[i, j, k] = kara;
                     }
                 }
 
-            }
-        }
-
-        //各インデックスに代入された値をもとに生成するorしない
-
-        for (int i = 0; i < field.GetLength(0); i++)
-        {
-            for (int j = 0; j < field.GetLength(1); j++)
-            {
-                for (int k = 0; k < field.GetLength(2); k++)
-                {
-                    //インデックスの値が1の時、cubeを生成
-                    if (field[i, j, k] == 1)
-                    {
-                        GameObject wall = Instantiate(grand);
-                        // wallの名前の変更 countによって一つ一つに番号をふる
-                        wall.name = "grand" + count;
-                        wall.transform.position = new Vector3(i, j, k);
-                        count++;
-                    }
-                }
             }
         }
         /*
@@ -156,6 +142,8 @@ public class maincontrol : MonoBehaviour
         Room2FButton = GameObject.Find("2F");
         RoomCreateButton = GameObject.Find("roomcreateOff");
         RoomDeleteButton = GameObject.Find("roomdeleteOff");
+        stepup = GameObject.Find("kaidanupoff");
+        doorButton = GameObject.Find("dooroff");
 
 
         //ボタン下のオブジェクトに反応させない
@@ -232,20 +220,14 @@ public class maincontrol : MonoBehaviour
                                         tmp.x = tmp1.x + t;
                                         tmp.y = tmp1.y;
 
-                                        //選択した座標を配列の要素番号に代入からのその上に床オブジェクトを配置
-                                        field[(int)tmp.x, (int)tmp.y + 1, (int)tmp.z] = 1;
-
-                                        //インデックスの値が1の時、cubeを生成
-                                        if (field[(int)tmp.x, (int)tmp.y + 1, (int)tmp.z] == 1)
-                                        {
-                                            //Assetsからmasuを取得
-                                            GameObject floor = Instantiate(masutile);
-                                            //オブジェクト生成時に"masu番号"に名前変更
-                                            floor.name = "masutile" + count;
-                                            floor.transform.position = new Vector3(tmp.x, tmp.y + 1, tmp.z);
-                                            count++;
-                                            floor.tag = "1fRoom" + FirstfRoomCount;
-                                        }
+                                        //Assetsからmasuを取得
+                                        GameObject floor = Instantiate(masutile);
+                                        //オブジェクト生成時に"masu番号"に名前変更
+                                        floor.name = "masutile" + count;
+                                        floor.transform.position = new Vector3(tmp.x, tmp.y + 1, tmp.z);
+                                        count++;
+                                        floor.tag = "1fRoom" + FirstfRoomCount;
+                                        field[(int)tmp.x, (int)tmp.y + 1, (int)tmp.z] = floor;
                                     }
                                 }
                                 for (int s = 0; tmp3.z >= s; s++)
@@ -257,17 +239,17 @@ public class maincontrol : MonoBehaviour
                                         tmp.x = tmp1.x + t;
                                         tmp.y = tmp1.y;
 
-                                        if (field[(int)tmp.x + 1, (int)tmp.y + 1, (int)tmp.z] == 0 || field[(int)tmp.x - 1, (int)tmp.y + 1, (int)tmp.z] == 0 || field[(int)tmp.x, (int)tmp.y + 1, (int)tmp.z + 1] == 0 || field[(int)tmp.x, (int)tmp.y + 1, (int)tmp.z - 1] == 0)
+                                        if (field[(int)tmp.x + 1, (int)tmp.y + 1, (int)tmp.z] == kara || field[(int)tmp.x - 1, (int)tmp.y + 1, (int)tmp.z] == kara || field[(int)tmp.x, (int)tmp.y + 1, (int)tmp.z + 1] == kara || field[(int)tmp.x, (int)tmp.y + 1, (int)tmp.z - 1] == kara)
                                         {
                                             // 選択した座標を配列の要素番号に代入からのその上に壁オブジェクトを配置
-                                            field[(int)tmp.x, (int)tmp.y + 2, (int)tmp.z] = 1;
-                                            field[(int)tmp.x, (int)tmp.y + 3, (int)tmp.z] = 1;
-                                            field[(int)tmp.x, (int)tmp.y + 4, (int)tmp.z] = 1;
+                                            field[(int)tmp.x, (int)tmp.y + 2, (int)tmp.z] = masuwall;
+                                            field[(int)tmp.x, (int)tmp.y + 3, (int)tmp.z] = masuwall;
+                                            field[(int)tmp.x, (int)tmp.y + 4, (int)tmp.z] = masuwall;
 
                                             //インデックスの値が1の時、cubeを生成
                                             for (int u = 2; u <= 4; u++)
                                             {
-                                                if (field[(int)tmp.x, (int)tmp.y + u, (int)tmp.z] == 1)
+                                                if (field[(int)tmp.x, (int)tmp.y + u, (int)tmp.z].name.Contains("wall"))
                                                 {
                                                     //Assetsからmasuを取得
                                                     GameObject wall = Instantiate(masuwall);
@@ -282,7 +264,7 @@ public class maincontrol : MonoBehaviour
                                                     {
                                                         WallTopList.Add(wall);
                                                     }
-
+                                                    field[(int)tmp.x, (int)tmp.y + u, (int)tmp.z] = wall;
                                                 }
                                             }
                                         }
@@ -358,21 +340,15 @@ public class maincontrol : MonoBehaviour
                                         tmp.x = tmp1.x + t;
                                         tmp.y = tmp1.y;
 
-                                        //選択した座標を配列の要素番号に代入からのその上に床オブジェクトを配置
-                                        field[(int)tmp.x, (int)tmp.y + 1, (int)tmp.z] = 1;
-
-                                        //インデックスの値が1の時、cubeを生成
-                                        if (field[(int)tmp.x, (int)tmp.y + 1, (int)tmp.z] == 1)
-                                        {
-                                            //Assetsからmasuを取得
-                                            GameObject floor = Instantiate(masutile);
-                                            //オブジェクト生成時に"masu番号"に名前変更
-                                            floor.name = "masutile" + count;
-                                            floor.transform.position = new Vector3(tmp.x, tmp.y + 1, tmp.z);
-                                            count++;
-                                            floor.tag = "2fRoom" + SecondRoomCount;
-                                            SecondRoomList.Add(floor);
-                                        }
+                                        //Assetsからmasuを取得
+                                        GameObject floor = Instantiate(masutile);
+                                        //オブジェクト生成時に"masu番号"に名前変更
+                                        floor.name = "masutile" + count;
+                                        floor.transform.position = new Vector3(tmp.x, tmp.y + 1, tmp.z);
+                                        count++;
+                                        floor.tag = "2fRoom" + SecondRoomCount;
+                                        SecondRoomList.Add(floor);
+                                        field[(int)tmp.x, (int)tmp.y + 1, (int)tmp.z] = floor;
                                     }
                                 }
                                 for (int s = 0; tmp3.z >= s; s++)
@@ -384,17 +360,17 @@ public class maincontrol : MonoBehaviour
                                         tmp.x = tmp1.x + t;
                                         tmp.y = tmp1.y;
 
-                                        if (field[(int)tmp.x + 1, (int)tmp.y + 1, (int)tmp.z] == 0 || field[(int)tmp.x - 1, (int)tmp.y + 1, (int)tmp.z] == 0 || field[(int)tmp.x, (int)tmp.y + 1, (int)tmp.z + 1] == 0 || field[(int)tmp.x, (int)tmp.y + 1, (int)tmp.z - 1] == 0)
+                                        if (field[(int)tmp.x + 1, (int)tmp.y + 1, (int)tmp.z] == kara || field[(int)tmp.x - 1, (int)tmp.y + 1, (int)tmp.z] == kara || field[(int)tmp.x, (int)tmp.y + 1, (int)tmp.z + 1] == kara || field[(int)tmp.x, (int)tmp.y + 1, (int)tmp.z - 1] == kara)
                                         {
                                             // 選択した座標を配列の要素番号に代入からのその上に壁オブジェクトを配置
-                                            field[(int)tmp.x, (int)tmp.y + 2, (int)tmp.z] = 1;
-                                            field[(int)tmp.x, (int)tmp.y + 3, (int)tmp.z] = 1;
-                                            field[(int)tmp.x, (int)tmp.y + 4, (int)tmp.z] = 1;
+                                            field[(int)tmp.x, (int)tmp.y + 2, (int)tmp.z] = masuwall;
+                                            field[(int)tmp.x, (int)tmp.y + 3, (int)tmp.z] = masuwall;
+                                            field[(int)tmp.x, (int)tmp.y + 4, (int)tmp.z] = masuwall;
 
                                             //インデックスの値が1の時、cubeを生成
                                             for (int u = 2; u <= 4; u++)
                                             {
-                                                if (field[(int)tmp.x, (int)tmp.y + u, (int)tmp.z] == 1)
+                                                if (field[(int)tmp.x, (int)tmp.y + u, (int)tmp.z].name.Contains("wall"))
                                                 {
                                                     //Assetsからmasuを取得
                                                     GameObject wall = Instantiate(masuwall);
@@ -405,8 +381,7 @@ public class maincontrol : MonoBehaviour
                                                     count++;
                                                     wall.tag = "2fRoom" + SecondRoomCount;
                                                     SecondRoomList.Add(wall);
-                                                    
-
+                                                    field[(int)tmp.x, (int)tmp.y + u, (int)tmp.z] = wall;
                                                 }
                                             }
                                         }
@@ -448,13 +423,99 @@ public class maincontrol : MonoBehaviour
                     ObjDelName = gameObj.name;
                     DelTagPos = GameObject.Find(ObjDelName).transform.position;
 
-                    field[(int)DelTagPos.x, (int)DelTagPos.y, (int)DelTagPos.z] = 0;
+                    field[(int)DelTagPos.x, (int)DelTagPos.y, (int)DelTagPos.z] = kara;
 
                     Destroy(gameObj);
                 }
             }
         }
 
+        //階段処理
+        if (stepup != null)
+        {
+            
+
+            //ボタンを押した処理
+            if (Input.GetMouseButtonDown(0))
+            {
+                Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+
+                //スタートの座標を取得
+                if (Physics.Raycast(ray, out hit))
+                {
+                    startObjectName = hit.collider.gameObject.name;
+
+                    tmp = GameObject.Find(startObjectName).transform.position;
+                }
+                field[(int)tmp.x, (int)tmp.y + 1, (int)tmp.z] = kaidanin;
+                field[(int)tmp.x, (int)tmp.y + 2, (int)tmp.z + 1] = kaidanin;
+                field[(int)tmp.x, (int)tmp.y + 3, (int)tmp.z + 2] = kaidanin;
+                field[(int)tmp.x, (int)tmp.y + 4, (int)tmp.z + 3] = kaidanin;
+                
+                for (int i = 0; i <= 4; i++)
+                {
+                    if (field[(int)tmp.x, (int)tmp.y + i + 1, (int)tmp.z + i].name.Contains("kaidan"))
+                    {
+                        Debug.Log("格納前"+field[(int)tmp.x, (int)tmp.y + i + 1, (int)tmp.z + i]);
+                        //Assetsからstepを取得
+                        GameObject kaidan = Instantiate(kaidanin);
+
+                        //オブジェクト生成時に"masu番号"に名前変更
+                        kaidan.name = "kaidan" + count;
+                        kaidan.transform.position = new Vector3(tmp.x, tmp.y + i + 1, tmp.z + i);
+                        kaidan.transform.Rotate(0.0f, 0.0f, 0.0f);
+                        field[(int)tmp.x, (int)tmp.y + i + 1, (int)tmp.z + i] = kaidan;
+                        Debug.Log("格納後"+field[(int)tmp.x, (int)tmp.y + i + 1, (int)tmp.z + i]);
+
+                        count++;
+                    }
+                    
+                    if (field[(int)tmp.x, 5 , (int)tmp.z + i].name.Contains("tile"))
+                    {
+                        field[(int)tmp.x, 5 , (int)tmp.z + i].SetActive(true);
+                        Debug.Log("下の処理"+field[(int)tmp.x, 5 , (int)tmp.z + i]);
+                    }
+                    
+                }
+            }
+        }
+
+        //ドア処理
+        if (doorButton != null)
+        {
+
+            Debug.Log("入った");
+            if (Input.GetMouseButtonDown(0))
+            {
+                Debug.Log("押された");
+                Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+                if (Physics.Raycast(ray, out hit))
+                {
+                    for (doorsu = 0; doorsu < 2; doorsu++)
+                    {
+                        // クリックしたオブジェクトの名前を取得
+                        wallObjName = hit.collider.gameObject.name;
+                        // stringからGameObjectに
+                        ClickObj = GameObject.Find(wallObjName);
+                        // クリックしたオブジェクトの座標を取得
+                        tmp = ClickObj.transform.position;
+
+                        field[(int)tmp.x, (int)tmp.y - 1 - doorsu, (int)tmp.z].SetActive(false);
+                        
+                    }
+
+                    Instantiate(door).transform.position = new Vector3(tmp.x, tmp.y - 2, tmp.z);
+                    //ここにタグ付け
+
+                }
+                
+                
+
+            }
+
+
+        }
+        
         //1Fと2Fに切り替えを行う
         if (Room1FButton != null)
         {
@@ -469,24 +530,6 @@ public class maincontrol : MonoBehaviour
                 if(toile2 != null)
                 {
                     toile2.SetActive(false);
-                }
-
-
-
-                // 2階の地面があった場所の配列の値を戻すため0と1を代入
-                for (int i = 0; i < field.GetLength(0); i++)
-                {
-                    for (int j = 0; j < field.GetLength(2); j++)
-                    {
-                        if (field[i, 4, j] == 1)
-                        {
-                            field[i, 4, j] = 0;
-                        }
-                        if (field[i, 4, j] == 2)
-                        {
-                            field[i, 4, j] = 1;
-                        }
-                    }
                 }
                 // 2階の地面の削除
 
@@ -548,22 +591,6 @@ public class maincontrol : MonoBehaviour
                 {
                     delObjTes.SetActive(false);
                 }
-                //1と0を代入
-                for (int i = 0; i < field.GetLength(0); i++)
-                {
-                    for (int j = 0; j < field.GetLength(2); j++)
-                    {
-                        if (field[i, 4, j] == 1)
-                        {
-                            field[i, 4, j] = 2;
-                        }
-                        else if (field[i, 4, j] == 0)
-                        {
-                            field[i, 4, j] = 1;
-                        }
-                    }
-                }
-
                 //各インデックスに代入された値をもとに生成するorしない
 
                 for (int i = 0; i < field.GetLength(0); i++)
@@ -571,24 +598,24 @@ public class maincontrol : MonoBehaviour
                     for (int j = 0; j < field.GetLength(2); j++)
                     {
                         //インデックスの値が1の時、cubeを生成
-                        if (field[i, 4, j] == 1)
+                        if (field[i, 4, j].name.Contains("kara"))
                         {
-                            GameObject wall = Instantiate(secondgrand);
+                            GameObject secondGrand = Instantiate(secondgrand);
                             // wallの名前の変更 countによって一つ一つに番号をふる
-                            wall.name = "secondgrand" + count;
-                            wall.transform.position = new Vector3(i, 4, j);
+                            secondGrand.name = "secondgrand" + count;
+                            secondGrand.transform.position = new Vector3(i, 4, j);
                             count++;
-                            wall.transform.parent = SecondGrands.transform;
+                            secondGrand.transform.parent = SecondGrands.transform;
 
                         }//インデックスの値が2の時、cubeを生成
-                        else if (field[i, 4, j] == 2)
+                        else if (field[i, 4, j].name.Contains("wall"))
                         {
-                            GameObject wall = Instantiate(blackcube);
+                            GameObject blackCube = Instantiate(blackcube);
                             //wallの名前の変更 countによって一つ一つに番号をふる
-                            wall.name = "blackcube" + blackcubecount;
-                            wall.transform.position = new Vector3(i, 4, j);
+                            blackCube.name = "blackcube" + blackcubecount;
+                            blackCube.transform.position = new Vector3(i, 4, j);
                             blackcubecount++;
-                            wall.transform.parent = SecondGrands.transform;
+                            blackCube.transform.parent = SecondGrands.transform;
                         }
                     }
                 }
@@ -622,26 +649,42 @@ public class maincontrol : MonoBehaviour
             // 1階モードのとき
             if (FirstFloorButton.activeSelf == true)
             {
-                // 2階で作った非表示のオブジェクトを表示する
-                foreach (GameObject HidSecondObj in SecondRoomList)
+                if (Floor1Judg == true)
                 {
-                    HidSecondObj.SetActive(true);
+                    Floor1Judg = false;
+                    // 2階で作ったオブジェクトを非表示にする
+                    foreach (GameObject HidSecondObj in SecondRoomList)
+                    {
+                        HidSecondObj.SetActive(false);
+                    }
+                    
                 }
+                Floor2Judg = true;
             }
             // 2階モードの時
             else if (SecondFloorButton.activeSelf == true)
             {
-                // 2階の地面の非表示
-                SecondGrandArray = SecondGrands.GetComponentsInChildren<Transform>();
-                foreach (GameObject GrandHiddn in SecondGrandArray)
+                if (Floor2Judg == true)
                 {
-                    GrandHiddn.SetActive(false);
+                    Floor2Judg = false;
+                    // 2階で作ったオブジェクトを非表示にする
+                    foreach (GameObject HidSecondObj in SecondRoomList)
+                    {
+                        HidSecondObj.SetActive(true);
+                    }
+                }
+                // 2階の地面の非表示
+                foreach (Transform GrandHiddn in SecondGrands.transform)
+                {
+                    GameObject HidObj = GrandHiddn.gameObject;
+                    HidObj.SetActive(false);
                 }
                 // 一度非表示にした壁の高い場所を表示
                 foreach (GameObject WallTopActive in WallTopList)
                 {
                     WallTopActive.SetActive(true);
                 }
+                Floor1Judg = true;
             }
         }
         // 3Dモードから2Dモードに戻ったとき
@@ -663,12 +706,11 @@ public class maincontrol : MonoBehaviour
                 // 2階モードの時
                 else if (SecondFloorButton.activeSelf == true)
                 {
-                    Debug.Log("入った1111");
-                    SecondGrandArray = SecondGrands.GetComponentsInChildren<Transform>();
-                    foreach (GameObject GrandHiddn in SecondGrandList.gameObject)
+                    // 2階の地面を表示する   
+                    foreach (Transform GrandHiddn in SecondGrands.transform)
                     {
-                        GrandHiddn.SetActive(true);
-                        Debug.Log("入った");
+                        GameObject HidObj = GrandHiddn.gameObject;
+                        HidObj.SetActive(true);
                     }
                     // 一度非表示にした壁の高い場所を非表示
                     foreach (GameObject WallTopActive in WallTopList)
